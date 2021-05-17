@@ -3,6 +3,7 @@
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::VectorXd;
 
 /* 
  * Please note that the Eigen library does not initialize 
@@ -23,19 +24,19 @@ void KalmanFilter::Init(VectorXd &x_in, MatrixXd &P_in, MatrixXd &F_in,
   Q_ = Q_in;
 }
 
-void KalmanFilter::Predict() {
-  P_ = F_ * P_ * F_.transpose();
-	x_ = (F_ * x_) + Q_;
+void KalmanFilter::Predict() {  
+  P_ = F_ * P_ * F_.transpose() + Q_;
+	x_ = F_ * x_;
 }
 
 void KalmanFilter::Update(const VectorXd &z) {
     
     VectorXd y = z - H_ * x_;
-    VectorXd S = H_ * P_ * H_.transpose() + R_;
-    VectorXd K = P_ * H_.transpose() * S.inverse();
+    MatrixXd S = H_ * P_ * H_.transpose() + R_;
+    MatrixXd K = P_ * H_.transpose() * S.inverse();
     
-    long x_size = x_.size();
-    VectorXd I = MatrixXd::Identity(2, 2);
+    long size = x_.size();
+    MatrixXd I = MatrixXd::Identity(size, size);
 
     // new state
     P_ = ( I - ( K * H_ ) ) * P_;
@@ -43,9 +44,6 @@ void KalmanFilter::Update(const VectorXd &z) {
 }
 
 void KalmanFilter::UpdateEKF(const VectorXd &z) {
-  /**
-   * TODO: update the state by using Extended Kalman Filter equations
-   */
 
   float px = x_(0);
   float py = x_(1);
@@ -55,16 +53,18 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   float c = sqrt( (px * px) + ( py * py ) );
 
   VectorXd h1 = VectorXd(3);
-  h1 << c, atan2(py, px), (px*vx + py*vy) / c, atan2(py, px);
+  h1 << c, atan2(py, px), (px*vx + py*vy) / c;
 
   VectorXd y = z - h1;
-  VectorXd S = H_ * P_ * H_.transpose() + R_;
-  VectorXd K = P_ * H_.transpose() * S.inverse();
-  
-  long x_size = x_.size();
-  VectorXd I = MatrixXd::Identity(2, 2);
+  MatrixXd Ht = H_.transpose();
 
-  // new state
+  MatrixXd S = H_ * P_ * Ht + R_;
+  MatrixXd K = P_ * Ht * S.inverse();
+  
+  long size = x_.size();
+  MatrixXd I = MatrixXd::Identity(size, size);
+ 
+  // calculate new state
   P_ = ( I - ( K * H_ ) ) * P_;
   x_ = x_ + ( K * y );
 }
